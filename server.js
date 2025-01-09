@@ -3,6 +3,10 @@ const express=require('express');
 const app=express();
 const mongoose=require('mongoose');
 
+
+// Configurar o EJS como o mecanismo de template
+app.set('view engine', 'ejs');
+
 // START Connectando com BD
 mongoose.connect('mongodb://localhost:27017/auth')
 .then(() => {
@@ -17,8 +21,10 @@ mongoose.connect('mongodb://localhost:27017/auth')
 app.get('/', (req, res) => {
     res.send('Servidor está funcionando!');
 });
-
+// Rotas
 app.use('/user',require('./routes/userRouter'));
+app.use('/',require('./routes/authRouter'));
+// end Rota 
 
 const PORT=process.env.PORT||3000
 app.listen(PORT,()=>{
