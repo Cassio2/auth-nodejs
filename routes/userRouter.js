@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const userController = require('../controllers/userController');
-const { registerValidation } = require('../helpers/validations');
+const { registerValidation, sendMailVerificationValidation } = require('../helpers/validations');
 
 // Middleware para analisar JSON
 router.use(express.json());
@@ -37,6 +37,7 @@ const upload = multer({
 
 // Rota para registro de usuários
 router.post('/register', upload.single('image'), registerValidation, userController.userRegister);
+router.post('/send-mail-verification', sendMailVerificationValidation, userController.sendMailVerification);
 
 // Rota de login para teste
 router.get('/login', (req, res) => {

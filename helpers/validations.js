@@ -27,3 +27,7 @@ exports.registerValidation = [
         }
     }).withMessage('a imagem deve ser do tipo jpeg ou png')
 ]
+
+exports.sendMailVerificationValidation = [
+    check('email').isEmail().normalizeEmail({ gmail_remove_dots: true }).withMessage('O e-mail informado não é válido')
+]
