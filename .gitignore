@@ -1,0 +1,25 @@
+# Ignorar a pasta node_modules
+node_modules/
+
+# Ignorar arquivos de log
+*.log
+
+# Ignorar arquivos de dependências
+package-lock.json
+yarn.lock
+
+# Ignorar arquivos de ambiente
+.env
+
+# Ignorar a pasta de build (se houver)
+dist/
+
+# Ignorar a pasta de testes (se houver)
+test/
+
+# Ignorar arquivos de sistema (Windows)
+Thumbs.db
+ehthumbs.db
+
+# Ignorar arquivos de sistema (Mac)
+.DS_Store
