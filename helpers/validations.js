@@ -31,3 +31,19 @@ exports.registerValidation = [
 exports.sendMailVerificationValidation = [
     check('email').isEmail().normalizeEmail({ gmail_remove_dots: true }).withMessage('O e-mail informado não é válido')
 ]
+
+exports.passwordResetValidation = [
+    check('email').isEmail().normalizeEmail({ gmail_remove_dots: true }).withMessage('O e-mail informado não é válido')
+]
+
+exports.loginValidation = [
+    check('email').isEmail().normalizeEmail({ gmail_remove_dots: true }).withMessage('O e-mail informado não é válido'),
+    check('password').not().isEmpty().withMessage('A senha é obrigatória'),
+    // check('password').isStrongPassword({
+    //     minLength: 1,
+    //     minLowercase: 1,
+    //     minUppercase: 1,
+    //     minNumbers: 1,
+    //     minSymbols: 1
+    // }).withMessage('A senha deve ter no mínimo 8 caracteres, 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial')
+]
