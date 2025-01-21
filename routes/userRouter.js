@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const userController = require('../controllers/userController');
-const { registerValidation, sendMailVerificationValidation, passwordResetValidation,loginValidation } = require('../helpers/validations');
+const { registerValidation, sendMailVerificationValidation, passwordResetValidation,loginValidation,upadateProfileValidation } = require('../helpers/validations');
 const auth = require('../middleware/auth');
 
 // Middleware para analisar JSON
@@ -46,5 +46,10 @@ router.post('/login',loginValidation, userController.loginUser);
 
 // autenticação de rotas
 router.get('/profile',auth, userController.userProfile);
+router.post('/update-profile',auth,upload.single('image'),upadateProfileValidation,userController.updateProfile);
+
+router.get('/refresh-token',auth,userController.refreshToken);
+router.get('/logout',auth,userController.logout);
+
 
 module.exports = router;

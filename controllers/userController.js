@@ -5,6 +5,9 @@ const mailer = require('../helpers/mailer');
 const passwordReset = require('../models/passwordReset')
 const randomstring = require('randomstring');
 const jwt = require('jsonwebtoken');
+const { deleteFile } = require('../helpers/deleteFile');
+const path = require('path');
+const Blacklist = require('../models/blacklistModel');
 
 // Função para registrar o usuário
 const userRegister = async (req, res) => {
@@ -199,7 +202,6 @@ const updatePassword = async (req, res) => {
     }
 }
 
-
 // Função para exibir a página de sucesso após a atualização da senha
 const resetSuccess = async (req, res) => {
     try {
@@ -214,6 +216,11 @@ const resetSuccess = async (req, res) => {
 // Função para gerar o token de acesso
 const generateAccessToken = (user) => {
     const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+    return token;
+}
+
+const generateRefreshToken = (user) => {
+    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '4h' });
     return token;
 }
 
@@ -245,12 +252,15 @@ const loginUser = async (req, res) => {
         }
 
         const AccessToken = await generateAccessToken({ user: userData });
+        const RefreshToken = await generateRefreshToken({ user: userData });
+
 
         return res.status(200).json({
             sucess: true,
             message: "Login efetuado com sucesso",
             user: userData,
             AccessToken: AccessToken,
+            RefreshToken: RefreshToken,
             tokenType: 'Bearer',
         });
 
@@ -269,6 +279,92 @@ const userProfile = async (req, res) => {
     }
 }
 
+// Função para atualizar o perfil do usuário
+const updateProfile = async (req, res) => {
+    try {
+        const erros = validationResult(req);
+        if (!erros.isEmpty()) {
+            return res.status(400).json({
+                sucess: false,
+                message: 'Erros de validação',
+                erros: erros.array()
+            });
+        }
+
+        const { name, mobile } = req.body;
+        const data = { name, mobile };
+        const id = req.user.user._id;
+
+        // Se houver um arquivo, tratamos a imagem
+        if (req.file !== undefined) {
+            data.image = 'image/' + req.file.filename;
+
+            const oldUser = await User.findOne({ _id: id });
+            const oldFilePath = path.join(__dirname, '../public/image/' + oldUser.image);
+            deleteFile(oldFilePath); // Deletando a imagem antiga
+        }
+
+        // Atualizando o usuário no banco de dados
+        const userData = await User.findByIdAndUpdate({ _id: id }, {
+            $set: data
+        }, { new: true });
+
+        return res.status(200).json({
+            sucess: true,
+            message: "Perfil atualizado com sucesso",
+            DadosDoUsuario: userData
+        });
+
+    } catch (erro) {
+        return res.status(400).json({
+            sucess: false,
+            message: erro.message,
+        });
+    }
+}
+
+
+
+const refreshToken= async (req,res)=>{
+    try{
+        const userId=req.user.user._id;
+        const UserData=await User.findOne({_id:userId});	
+
+        const AccessToken=await generateAccessToken({user:UserData});
+        const refreshToken=await generateRefreshToken({user:UserData});
+
+        return res.status(200).json({
+            sucess:true,
+            message:'Token atualizado com sucesso',
+            AccessToken:AccessToken,
+            RefreshToken:refreshToken,
+        
+        });
+    }
+    catch(erro){
+        return res.status(400).json({sucess:false,message:erro.message})
+    }
+}
+
+const logout=async (req,res)=>{
+    try{
+        const token=req.body.token||req.query.token||req.headers['authorization'];
+        const bearer=token.split(' ');
+        const bearerToken=bearer[1];
+
+        const newBlacklist=new Blacklist({
+            token:bearerToken
+        });
+
+        await newBlacklist.save();
+
+        res.setHeader('Clear-Site-Data','"cookies","storage"');
+        return res.status(200).json({sucess:true,message:'Logout efetuado com sucesso'});
+    }
+    catch(erro){
+        return res.status(400).json({sucess:false,message:erro.message})
+    }
+}
 
 module.exports = {
     userRegister,
@@ -279,5 +375,8 @@ module.exports = {
     updatePassword,
     resetSuccess,
     loginUser,
-    userProfile 
+    userProfile,
+    updateProfile,
+    refreshToken,
+    logout
 }

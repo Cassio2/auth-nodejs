@@ -11,8 +11,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "auth": "file:",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
+    "bootstrap": "^5.3.3",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^4.21.2",

@@ -47,3 +47,12 @@ exports.loginValidation = [
     //     minSymbols: 1
     // }).withMessage('A senha deve ter no mínimo 8 caracteres, 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial')
 ]
+
+exports.upadateProfileValidation = [
+    check('name').isLength({ min: 3 }).withMessage('O nome deve ter no mínimo 3 caracteres'),
+    check('mobile').isLength({
+        min: 9,
+        max: 9
+    }).withMessage('O número de telefone deve ter 9 dígitos'),
+
+]
