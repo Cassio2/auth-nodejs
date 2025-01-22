@@ -8,6 +8,9 @@ const jwt = require('jsonwebtoken');
 const { deleteFile } = require('../helpers/deleteFile');
 const path = require('path');
 const Blacklist = require('../models/blacklistModel');
+const Otp = require('../models/otp');
+const otp = require('../models/otp');
+const { UmMinutoExprira, threeMinutoExprira } = require('../helpers/OtpValidation');
 
 // Função para registrar o usuário
 const userRegister = async (req, res) => {
@@ -323,48 +326,149 @@ const updateProfile = async (req, res) => {
     }
 }
 
+const refreshToken = async (req, res) => {
+    try {
+        const userId = req.user.user._id;
+        const UserData = await User.findOne({ _id: userId });
 
-
-const refreshToken= async (req,res)=>{
-    try{
-        const userId=req.user.user._id;
-        const UserData=await User.findOne({_id:userId});	
-
-        const AccessToken=await generateAccessToken({user:UserData});
-        const refreshToken=await generateRefreshToken({user:UserData});
+        const AccessToken = await generateAccessToken({ user: UserData });
+        const refreshToken = await generateRefreshToken({ user: UserData });
 
         return res.status(200).json({
-            sucess:true,
-            message:'Token atualizado com sucesso',
-            AccessToken:AccessToken,
-            RefreshToken:refreshToken,
-        
+            sucess: true,
+            message: 'Token atualizado com sucesso',
+            AccessToken: AccessToken,
+            RefreshToken: refreshToken,
+
         });
     }
-    catch(erro){
-        return res.status(400).json({sucess:false,message:erro.message})
+    catch (erro) {
+        return res.status(400).json({ sucess: false, message: erro.message })
     }
 }
 
-const logout=async (req,res)=>{
-    try{
-        const token=req.body.token||req.query.token||req.headers['authorization'];
-        const bearer=token.split(' ');
-        const bearerToken=bearer[1];
+const logout = async (req, res) => {
+    try {
+        const token = req.body.token || req.query.token || req.headers['authorization'];
+        const bearer = token.split(' ');
+        const bearerToken = bearer[1];
 
-        const newBlacklist=new Blacklist({
-            token:bearerToken
+        const newBlacklist = new Blacklist({
+            token: bearerToken
         });
 
         await newBlacklist.save();
 
-        res.setHeader('Clear-Site-Data','"cookies","storage"');
-        return res.status(200).json({sucess:true,message:'Logout efetuado com sucesso'});
+        res.setHeader('Clear-Site-Data', '"cookies","storage"');
+        return res.status(200).json({ sucess: true, message: 'Logout efetuado com sucesso' });
     }
-    catch(erro){
-        return res.status(400).json({sucess:false,message:erro.message})
+    catch (erro) {
+        return res.status(400).json({ sucess: false, message: erro.message })
     }
 }
+
+const generateRandon4Digit = async () => {
+    return Math.floor(1000 + Math.random() * 9000);
+}
+const sendOtp = async (req, res) => {
+    try {
+        const erros = validationResult(req);
+        if (!erros.isEmpty()) {
+            return res.status(400).json({ sucess: false, message: 'ErrosendOtp', erros: erros.array() });
+        }
+        const { email } = req.body;
+        const userData = await User.findOne({ email: email });
+
+        if (!userData) {
+            return res.status(400).json({ sucess: false, message: "Email não encontrado" });
+        }
+        if (userData.is_verified == 1) {
+            return res.status(400).json({ sucess: false, message: userData.email + ", Email já verificado" });
+        }
+
+        const g_otp = await generateRandon4Digit();
+
+        const oldOtpDate = await Otp.findOne({ user_id: userData._id });
+
+        if (oldOtpDate) {
+            const sendNextOtp = await UmMinutoExprira(oldOtpDate.timestamps);
+            if (!sendNextOtp) {
+                return res.status(400).json({
+                    sucess: false,
+                    message: "Por favor, aguarde 1 minuto para enviar o próximo otp"
+                });
+            }
+        }
+        const c_Date = new Date();
+
+        await Otp.findOneAndUpdate(
+            { user_id: userData._id },
+            { otp: g_otp, timestamps: new Date(c_Date.getTime()) },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+
+
+
+        const msg = '<p>Olá, <b>' + userData.name + '</b> </br> <h4>' + g_otp + '</h4>  </p>';
+        mailer.sendMail(userData.email, 'Verificação de otp', msg);
+
+        return res.status(200).json({ sucess: true, message: "otp foi enviado para o seu e-mail, por favor verifique" });
+
+    }
+    catch (erro) {
+        return res.status(400).json({ sucess: false, message: erro.message })
+    }
+}
+
+const verifyOtp = async (req, res) => {
+    try {
+        const erros = validationResult(req);
+        if (!erros.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Erros de validação',
+                erros: erros.array()
+            });
+        }
+
+        const { user_id, otp } = req.body;
+
+        const otpDate = await Otp.findOne({
+            user_id,
+            otp
+        });
+
+        if (!otpDate) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Digitou OTP errado'
+            });
+        }
+
+        const eOtpExpirado = await threeMinutoExprira(otpDate.timestamps);
+
+        if (eOtpExpirado) {
+            return res.status(400).json({
+                success: false,
+                msg: 'Seu OTP expirou'
+            });
+        }
+
+        await User.findByIdAndUpdate(
+            { _id: user_id },
+            { $set: { is_verified: 1 } }
+        );
+
+        return res.status(200).json({
+            success: true,
+            msg: 'Conta verificada com sucesso'
+        });
+
+    } catch (erro) {
+        return res.status(400).json({ success: false, message: erro.message });
+    }
+};
+
 
 module.exports = {
     userRegister,
@@ -378,5 +482,7 @@ module.exports = {
     userProfile,
     updateProfile,
     refreshToken,
-    logout
+    logout,
+    sendOtp,
+    verifyOtp
 }

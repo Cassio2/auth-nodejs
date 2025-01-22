@@ -56,3 +56,13 @@ exports.upadateProfileValidation = [
     }).withMessage('O número de telefone deve ter 9 dígitos'),
 
 ]
+
+exports.otpMailValidation = [
+    check('email').isEmail().normalizeEmail({ gmail_remove_dots: true }).withMessage('O e-mail informado não é válido')
+]
+
+exports.verifyOtpValidation = [
+    check('user_id').not().isEmpty().withMessage('User_id é obrigatória'),
+    check('otp').not().isEmpty().withMessage('Otp é obrigatória'),
+ 
+]

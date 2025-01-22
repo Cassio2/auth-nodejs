@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const userController = require('../controllers/userController');
-const { registerValidation, sendMailVerificationValidation, passwordResetValidation,loginValidation,upadateProfileValidation } = require('../helpers/validations');
+const { registerValidation, sendMailVerificationValidation, passwordResetValidation,loginValidation,upadateProfileValidation, otpMailValidation, verifyOtpValidation } = require('../helpers/validations');
 const auth = require('../middleware/auth');
 
 // Middleware para analisar JSON
@@ -50,6 +50,11 @@ router.post('/update-profile',auth,upload.single('image'),upadateProfileValidati
 
 router.get('/refresh-token',auth,userController.refreshToken);
 router.get('/logout',auth,userController.logout);
+
+
+//otp vericação routes
+router.post('/send-otp', otpMailValidation,userController.sendOtp);
+router.post('/verify-otp',verifyOtpValidation,userController.verifyOtp)
 
 
 module.exports = router;

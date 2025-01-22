@@ -13,7 +13,7 @@ const verifyToken = async (req, res, next) => {
 
         const blacklistedToken = await Blacklist.findOne({ token: bearerToken });
         if (blacklistedToken) {
-            return res.status(403).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Esta sessão esta expirada, por favor faça login novamente'
             })
