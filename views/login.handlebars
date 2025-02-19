@@ -1,0 +1,80 @@
+{{#if errors}}
+    <div class="alert alert-danger">
+        <ul>
+            {{#each errors}}
+                <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+{{/if}}
+
+
+
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center text-center mb-3 mb-lg-5">
+            <div class="col-md-6">
+                <h2>Faça login na app</h2>
+                <form id="loginForm" action="/login" method="POST" enctype="multipart/form-data">
+
+                    <div class="mb-3">
+                        <input name="email" class="form-control bg-light" placeholder="Email" type="email">
+                    </div>
+
+                    <div class="mb-3">
+                        <input name="password" class="form-control bg-light" placeholder="Senha" type="password">
+                    </div>
+
+                    <button class="btn btn-primary" type="submit">Entrar</button>
+                </form>
+
+                <a href="forgot-password">Esqueceu a senha</a><br>
+                <a href="/register">Registar-se</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Captura o formulário de login pelo ID
+        const loginForm = document.getElementById('loginForm');
+
+        // Adiciona o evento de submit
+        loginForm.addEventListener('submit', function (event) {
+            event.preventDefault(); // Impede o envio tradicional do formulário
+
+            // Coleta os valores dos campos
+            const email = document.querySelector('input[name="email"]').value;
+            const password = document.querySelector('input[name="password"]').value;
+
+            // Envia a requisição para o servidor
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }) // Dados enviados no corpo
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Resposta do servidor:', data); // Mostra a resposta no console
+                if (data.success) {
+                    // Armazena os tokens no localStorage
+                    localStorage.setItem('AccessToken', data.AccessToken);
+                    localStorage.setItem('RefreshToken', data.RefreshToken);
+
+                    // Redireciona para a página de perfil
+                    window.location.href = '/profile';
+                } else {
+                    alert(data.message || 'Erro ao realizar login');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao realizar login:', error);
+                alert('Ocorreu um erro. Tente novamente.');
+            });
+        });
+    });
+</script>
+

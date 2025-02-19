@@ -14,71 +14,81 @@ const { UmMinutoExprira, threeMinutoExprira } = require('../helpers/OtpValidatio
 
 // Função para registrar o usuário
 const userRegister = async (req, res) => {
-
     try {
-
         const erros = validationResult(req);
 
         if (!erros.isEmpty()) {
-            return res.status(400).json({ sucess: false, message: 'Erros', erros: erros.array() });
+            // Extrai apenas as mensagens de erro
+            const errors = erros.array().map((error) => error.msg);
+
+            // Armazena os erros na sessão usando flash
+            req.flash('errors', errors);
+
+            // Redireciona de volta para a página de registro
+            return res.redirect('/register');
         }
 
+        // Extraindo os dados do corpo da requisição
         const { name, email, password, mobile } = req.body;
-        const image = req.file.filename;
+        const image = req.file?.filename; // Verifica se o arquivo existe
 
         // Verificando se o email já está cadastrado
         const userExist = await User.findOne({ email });
         if (userExist) {
-            return res.status(400).json({ sucess: false, message: "Email já cadastrado" });
+            req.flash('errors', ['Email já cadastrado']); // Armazena o erro na sessão
+            return res.redirect('/register');
         }
-        // criptografando a senha
-        const hashPassword = await bcrypt.hash(password, 10)
 
-        const user = new User({ name, email, password: hashPassword, image, mobile })
+        // Criptografando a senha
+        const hashPassword = await bcrypt.hash(password, 10);
+
+        // Criando o novo usuário
+        const user = new User({ name, email, password: hashPassword, image, mobile });
         const userData = await user.save();
 
-        const msg = '<p>Olá, ' + name + ', Por favor <a href="http://localhost:3363/mail-verification?id=' + userData._id + '">verifique</a> o seu email</p>';
+        // Enviando email de verificação
+        const msg = `<p>Olá, ${name}, por favor <a href="http://localhost:3363/mail-verification?id=${userData._id}">verifique</a> o seu email</p>`;
         mailer.sendMail(email, 'Verificação de email', msg);
 
-        return res.status(200).json({ sucess: true, message: "Usuario registado com sucesso", dadosUsuario: userData });
+        req.flash('success', 'Usuário registrado com sucesso,Enviamos uma mensagem para o seu Email por favor verifique');
+        return res.redirect('/register');
 
     } catch (error) {
-        return res.status(400).json({ sucess: false, message: error.message });
+        req.flash('errors', [error.message]);
+        return res.redirect('/register');
     }
-
-}
+};
 
 // Função para verificar o email
 const mailVerification = async (req, res) => {
     try {
         if (req.query.id == undefined) {
-            console.log('Id não definido')
+            console.log('Id não definido');
             return res.render('404');
+ 
         }
 
         const userData = await User.findOne({ _id: req.query.id });
 
         if (userData) {
-
             if (userData.is_verified == 1) {
                 return res.render('mail-verification', { message: 'Email já verificado' });
             }
 
             await User.findByIdAndUpdate({ _id: req.query.id }, {
-                $set: {
-                    is_verified: 1
-                }
+                $set: { is_verified: 1 }
             });
+
             return res.render('mail-verification', { message: 'Email verificado com sucesso' });
-        }
-        else {
+         
+        } else {
             return res.render('mail-verification', { message: 'Usuário não encontrado' });
         }
     } catch (erro) {
         console.log(erro.message)
         return res.render('404');
     }
-}
+};
 
 // Função para enviar o link de verificação
 const sendMailVerification = async (req, res) => {
@@ -110,41 +120,53 @@ const sendMailVerification = async (req, res) => {
     }
 }
 
-// Função para redefinir a senha
+// Função para confirmar email de usuario e enviar link de cofirmação
 const forgotPassword = async (req, res) => {
     try {
-        console.log(req.body)
+        // console.log(req.body)
         const erros = validationResult(req);
         if (!erros.isEmpty()) {
-            return res.status(400).json({ sucess: false, message: 'Erros', erros: erros.array() });
+            const errorMessages = erros.array().map((error) => error.msg);
+            req.flash('errors', errorMessages);
+            return res.redirect('/forgot-password');
         }
+
         const { email } = req.body;
         const userData = await User.findOne({ email: email });
 
+        // Verifica se o e-mail existe no banco de dados
         if (!userData) {
-            return res.status(400).json({ sucess: false, message: "Email não encontrado" });
+            req.flash('errors', ['Email não encontrado']);
+            return res.redirect('/forgot-password');
         }
 
+        // Gera o token de redefinição de senha
         const randomString = randomstring.generate(20);
-        const message = '<p>Olá, ' + userData.name + ', Por favor <a href="http://localhost:3363/reset-password?token=' + randomString + '">clique aqui</a> para redefinir a sua senha</p>';
-        await passwordReset.deleteMany({ user_id: userData._id }); //deletando todos os tokens antigos
+        const message = `
+            <p>Olá, ${userData.name},</p>
+            <p>Por favor, <a href="http://localhost:3363/reset-password?token=${randomString}">clique aqui</a> para redefinir a sua senha.</p>
+        `;
+
+        // Remove tokens antigos e cria um novo token
+        await passwordReset.deleteMany({ user_id: userData._id });
         const passwordResetData = new passwordReset({
             user_id: userData._id,
             token: randomString
-        }); //criando um novo token
+        });
 
-        await passwordResetData.save(); //salvando o token no banco de dados
+        await passwordResetData.save();
 
-        mailer.sendMail(userData.email, 'Redefinição de senha', message); //enviando o email
+        // Envia o e-mail com o link de redefinição
+        mailer.sendMail(userData.email, 'Redefinição de senha', message);
 
-        return res.status(200).json({ sucess: true, message: "link de redefinição de senha enviado para o seu e-mail, por favor, verifique" });
-
+        req.flash('success', ['Link de redefinição de senha enviado para o seu e-mail. Por favor, verifique.']);
+        return res.redirect('/forgot-password');
+    } catch (erro) {
+        console.error('Erro:', erro.message);
+        req.flash('errors', ['Erro interno do servidor']);
+        return res.redirect('/forgot-password');
     }
-    catch (erro) {
-        console.log(erro.message)
-        return res.render('404');
-    }
-}
+};
 
 // Função para exibir a página de redefinição de senha
 const resetPassword = async (req, res) => {
@@ -230,47 +252,58 @@ const generateRefreshToken = (user) => {
 // Função para efetuar o login
 const loginUser = async (req, res) => {
     try {
-        // Verificar se existem erros de validação
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ sucess: false, message: 'Erro de Logim', erros: errors.array() });
+        const erros = validationResult(req);
+
+        if (!erros.isEmpty()) {
+            const errors = erros.array().map((error) => error.msg);
+            req.flash('errors', errors);
+            return res.redirect('/login');
         }
 
         const { email, password } = req.body;
-
         const userData = await User.findOne({ email });
 
         if (!userData) {
-            return res.status(401).json({ sucess: false, message: "Email não encontrado" });
+            req.flash('errors', ['Email não encontrado']);
+            return res.redirect('/login');
         }
 
-        const passwordMatch = await bcrypt.compare(password, userData.password)
-
+        const passwordMatch = await bcrypt.compare(password, userData.password);
         if (!passwordMatch) {
-            return res.status(401).json({ sucess: false, message: "Senha incorreta" });
+            req.flash('errors', ['Senha incorreta']);
+            return res.redirect('/login');
         }
 
         if (userData.is_verified == 0) {
-            return res.status(401).json({ sucess: false, message: "Email não verificado" });
+            req.flash('errors', ['Email não verificado']);
+            return res.redirect('/login');
         }
 
+        // Gera os tokens
         const AccessToken = await generateAccessToken({ user: userData });
         const RefreshToken = await generateRefreshToken({ user: userData });
 
-
+        // Retorna os tokens como resposta JSON
         return res.status(200).json({
-            sucess: true,
-            message: "Login efetuado com sucesso",
-            user: userData,
-            AccessToken: AccessToken,
-            RefreshToken: RefreshToken,
-            tokenType: 'Bearer',
+            success: true,
+            message: 'Login efetuado com sucesso',
+            user: {
+                id: userData.id,
+                email: userData.email,
+                name: userData.name
+            },
+            AccessToken,
+            RefreshToken,
+            tokenType: 'Bearer'
         });
 
-    } catch (erro) {
-        return res.status(400).json({ sucess: false, message: erro.message });
+    } catch (error) {
+        console.error('Erro no login:', error.message);
+        req.flash('errors', [error.message]);
+        return res.redirect('/login');
     }
-}
+};
+
 
 // Função para exibir o perfil do usuário
 const userProfile = async (req, res) => {
