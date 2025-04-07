@@ -5,44 +5,44 @@
     <!-- Outros dados do usuário aqui -->
 </div>
 
- <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const token = localStorage.getItem('AccessToken'); // Obtém o token do localStorage
-    console.log('Token no localStorage:', token); // Verifica se o token existe
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const token = localStorage.getItem('AccessToken'); // Obtém o token do localStorage
+        console.log('Token no localStorage:', token); // Verifica se o token existe
 
-    if (token) {
-        // Faz a requisição para a rota '/profile'
-        fetch('/profile', {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token, // Adiciona o token no cabeçalho
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            console.log('Código de status:', response.status); // Exibe o código de status
-            return response.json();
-        })
-        .then(data => {
-            console.log('Resposta do servidor:', data); // Mostra a resposta da API
-            if (data.success) {
-                // Exibe o conteúdo da página se o acesso for autorizado
-                document.getElementById('profileContent').style.display = 'block';
-            } else {
-                // Redireciona para login se não autorizado
-                window.location.href = '/login';
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao acessar a página de perfil:', error);
+        if (token) {
+            // Faz a requisição para a rota '/profile'
+            fetch('/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token, // Adiciona o token no cabeçalho
+                    'Content-Type': 'application/json',
+                }
+            })
+                .then(response => {
+                    console.log('Código de status:', response.status); // Exibe o código de status
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Resposta do servidor:', data); // Mostra a resposta da API
+                    if (data.success) {
+                        // Exibe o conteúdo da página se o acesso for autorizado
+                        document.getElementById('profileContent').style.display = 'block';
+                    } else {
+                        // Redireciona para login se não autorizado
+                        window.location.href = '/login';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao acessar a página de perfil:', error);
+                    window.location.href = '/login';
+                });
+        } else {
+            // Redireciona para login se o token estiver ausente
+            console.warn('Token ausente no localStorage');
             window.location.href = '/login';
-        });
-    } else {
-        // Redireciona para login se o token estiver ausente
-        console.warn('Token ausente no localStorage');
-        window.location.href = '/login';
-    }
-});
+        }
+    });
 
-  
+
 </script>
